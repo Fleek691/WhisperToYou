@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#050505] text-[#E5E5E5] font-sans antialiased selection:bg-[#8B0000] selection:text-white;
+    background-color: #050505;
+  }
+
+  h1, h2, h3, h4, .font-serif-literary {
+    font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+::-webkit-scrollbar-thumb {
+  background: #260505;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #5C0505;
+}
+
+/* Editorial divider */
+.crimson-divider {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(139, 0, 0, 0) 0%, rgba(153, 0, 0, 0.4) 50%, rgba(139, 0, 0, 0) 100%);
+}
+
+.crimson-border-card {
+  background-color: #0D0D0D;
+  border: 1px solid rgba(139, 0, 0, 0.2);
+  transition: all 0.4s ease;
+}
+
+.crimson-border-card:hover {
+  border-color: rgba(180, 20, 20, 0.5);
+  box-shadow: 0 0 25px rgba(153, 0, 0, 0.15);
+}
+
+/* Noise overlay */
+.noise-bg {
+  background-image: radial-gradient(rgba(139, 0, 0, 0.08) 1px, transparent 0);
+  background-size: 24px 24px;
+}
