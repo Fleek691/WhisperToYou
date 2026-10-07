@@ -17,8 +17,8 @@ export interface IOrder extends Document {
   utrNumber?: string;
   paymentStatus: 'pending' | 'pending_verification' | 'successful' | 'failed' | 'cancelled';
   orderStatus: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
-  razorpayOrderId?: string;
-  razorpayPaymentId?: string;
+  paymentSessionId?: string;
+  paymentId?: string;
   shippingCarrier?: string;
   trackingNumber?: string;
   trackingUrl?: string;
@@ -52,8 +52,8 @@ const OrderSchema = new Schema<IOrder>(
       enum: ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'],
       default: 'Pending',
     },
-    razorpayOrderId: { type: String },
-    razorpayPaymentId: { type: String },
+    paymentSessionId: { type: String },
+    paymentId: { type: String },
     shippingCarrier: { type: String },
     trackingNumber: { type: String },
     trackingUrl: { type: String },

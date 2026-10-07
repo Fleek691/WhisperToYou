@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import crypto from 'crypto';
-import { getRazorpayInstance } from '../config/razorpay.js';
+import { Cashfree } from 'cashfree-pg';
+import { initializeCashfree } from '../config/cashfree.js';
 import { OrderModel } from '../models/Order.js';
 import { inMemoryDB } from '../config/db.js';
 import { sendOrderConfirmationEmail } from '../services/emailService.js';
@@ -28,59 +28,52 @@ export const createPaymentOrder = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    const rzp = getRazorpayInstance();
+    const isInitialized = initializeCashfree();
 
     // Development / Test Mode Fallback
-    if (!rzp) {
-      console.warn('⚠️  Razorpay credentials not found in env. Returning test payment payload.');
-      const testOrderId = `order_test_${Date.now()}`;
-      order.razorpayOrderId = testOrderId;
+    if (!isInitialized) {
+      console.warn('⚠️  Cashfree credentials not found in env. Returning test payment payload.');
+      const testSessionId = `session_test_${Date.now()}`;
       res.json({
-        keyId: 'rzp_test_placeholder',
-        razorpayOrderId: testOrderId,
-        amount: order.totalAmount * 100,
-        currency: 'INR',
+        payment_session_id: testSessionId,
+        order_id: orderId,
         isTestMode: true,
       });
       return;
     }
 
-    // Live Razorpay Order Creation
-    const options = {
-      amount: order.totalAmount * 100, // amount in paise
-      currency: 'INR',
-      receipt: order.orderId,
-      payment_capture: 1,
+    // Live Cashfree Order Creation
+    const request = {
+      order_amount: order.totalAmount,
+      order_currency: 'INR',
+      order_id: order.orderId,
+      customer_details: {
+        customer_id: order.email ? order.email.replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 50) : 'cust_123',
+        customer_name: order.customerName,
+        customer_email: order.email || 'customer@example.com',
+        customer_phone: order.phone || '9999999999'
+      }
     };
 
-    const rzpOrder = await rzp.orders.create(options);
-
-    // Save razorpayOrderId back to order
-    try {
-      await OrderModel.findOneAndUpdate({ orderId }, { razorpayOrderId: rzpOrder.id });
-    } catch (e) {
-      order.razorpayOrderId = rzpOrder.id;
-    }
+    const response = await Cashfree.PGCreateOrder("2023-08-01", request);
 
     res.json({
-      keyId: process.env.RAZORPAY_KEY_ID,
-      razorpayOrderId: rzpOrder.id,
-      amount: rzpOrder.amount,
-      currency: rzpOrder.currency,
+      payment_session_id: response.data.payment_session_id,
+      order_id: response.data.order_id,
       isTestMode: false,
     });
   } catch (error: any) {
-    console.error('Error creating Razorpay order:', error);
+    console.error('Error creating Cashfree order:', error?.response?.data || error);
     res.status(500).json({ message: 'Payment initiation failed', error: error.message });
   }
 };
 
 export const verifyPayment = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { orderId, razorpayPaymentId, razorpayOrderId, razorpaySignature, isTestMode } = req.body;
+    const { orderId, isTestMode } = req.body;
 
-    if (!orderId || !razorpayPaymentId) {
-      res.status(400).json({ message: 'Missing required payment verification fields' });
+    if (!orderId) {
+      res.status(400).json({ message: 'Missing orderId' });
       return;
     }
 
@@ -98,20 +91,28 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Signature Verification Logic
     let isValid = false;
+    let paymentId = 'test_payment_id';
 
-    if (isTestMode || !process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET.includes('YOUR_KEY_SECRET')) {
+    const isInitialized = initializeCashfree();
+
+    if (isTestMode || !isInitialized) {
       console.warn('⚠️  Verifying in Test Mode execution');
       isValid = true;
     } else {
-      const body = razorpayOrderId + '|' + razorpayPaymentId;
-      const expectedSignature = crypto
-        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-        .update(body.toString())
-        .digest('hex');
-
-      isValid = expectedSignature === razorpaySignature;
+      try {
+        const response = await Cashfree.PGOrderFetchPayments("2023-08-01", orderId);
+        const payments = response.data;
+        // Find if any payment was successful
+        const successfulPayment = payments.find((p: any) => p.payment_status === 'SUCCESS');
+        
+        if (successfulPayment) {
+          isValid = true;
+          paymentId = successfulPayment.cf_payment_id?.toString() || 'cf_payment';
+        }
+      } catch (err) {
+        console.error('Error fetching Cashfree payments:', err);
+      }
     }
 
     if (!isValid) {
@@ -121,7 +122,7 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
       } catch (e) {
         order.paymentStatus = 'failed';
       }
-      res.status(400).json({ success: false, message: 'Invalid payment signature verification' });
+      res.status(400).json({ success: false, message: 'Payment not successful' });
       return;
     }
 
@@ -129,8 +130,7 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
     const updateData = {
       paymentStatus: 'successful',
       orderStatus: 'Processing',
-      razorpayPaymentId,
-      razorpayOrderId: razorpayOrderId || order.razorpayOrderId,
+      paymentId: paymentId,
       updatedAt: new Date(),
     };
 
@@ -173,3 +173,91 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
     res.status(500).json({ success: false, message: 'Payment verification failed', error: error.message });
   }
 };
+
+/**
+ * Cashfree Webhook Handler
+ * Ensures that if a user closes the browser before redirection, 
+ * the order still gets marked as successful in the background.
+ */
+export const cashfreeWebhook = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const type = req.body?.type;
+
+    // Return early if not a payment success webhook (this handles Cashfree's 'Test' pings)
+    if (type !== 'PAYMENT_SUCCESS_WEBHOOK') {
+      res.status(200).send('Ignored event type');
+      return;
+    }
+
+    const orderId = req.body?.data?.order?.order_id;
+
+    if (!orderId) {
+      res.status(400).send('No order ID found in webhook payload');
+      return;
+    }
+
+    const isInitialized = initializeCashfree();
+    if (!isInitialized) {
+      res.status(200).send('Test mode, webhook ignored');
+      return;
+    }
+
+    // Secure Verification: Always ask Cashfree directly for the status
+    // This prevents malicious actors from spoofing a success webhook
+    const response = await Cashfree.PGOrderFetchPayments("2023-08-01", orderId);
+    const payments = response.data;
+    const successfulPayment = payments.find((p: any) => p.payment_status === 'SUCCESS');
+
+    if (successfulPayment) {
+      const paymentId = successfulPayment.cf_payment_id?.toString() || 'cf_payment';
+
+      // Check if order is already processed
+      const order = await OrderModel.findOne({ orderId });
+      
+      if (order && order.paymentStatus !== 'successful') {
+        const updatedOrder = await OrderModel.findOneAndUpdate(
+          { orderId },
+          {
+            paymentStatus: 'successful',
+            orderStatus: 'Processing',
+            paymentId: paymentId,
+            updatedAt: new Date(),
+          },
+          { new: true }
+        );
+
+        // Send notifications
+        if (updatedOrder && updatedOrder.email) {
+          sendOrderConfirmationEmail({
+            to: updatedOrder.email,
+            customerName: updatedOrder.customerName,
+            orderId: updatedOrder.orderId,
+            quantity: updatedOrder.quantity,
+            bookPrice: updatedOrder.bookPrice,
+            shippingCharge: updatedOrder.shippingCharge,
+            totalAmount: updatedOrder.totalAmount,
+            address: updatedOrder.address,
+            city: updatedOrder.city,
+            state: updatedOrder.state,
+            pincode: updatedOrder.pincode,
+          }).catch(console.error);
+        }
+        if (updatedOrder && updatedOrder.phone) {
+          sendOrderConfirmationSMS({
+            phone: updatedOrder.phone,
+            orderId: updatedOrder.orderId,
+            customerName: updatedOrder.customerName,
+            totalAmount: updatedOrder.totalAmount,
+          }).catch(console.error);
+        }
+      }
+    }
+    
+    // Always return 200 OK to Cashfree so they stop retrying
+    res.status(200).send('Webhook Processed');
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.status(500).send('Error processing webhook');
+  }
+};
+

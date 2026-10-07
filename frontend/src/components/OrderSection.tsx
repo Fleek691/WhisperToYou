@@ -30,12 +30,30 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onOrderSuccess }) =>
   const [errors, setErrors] = useState<Partial<Record<keyof CustomerDetails, string>>>({});
   const [loading, setLoading] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const cashfree = React.useRef<any>(null);
+
+  React.useEffect(() => {
+    // @ts-ignore
+    import('@cashfreepayments/cashfree-js').then(({ load }) => {
+      load({
+        mode: import.meta.env.VITE_CASHFREE_MODE === 'production' ? 'production' : 'sandbox',
+      }).then((cf: any) => {
+        cashfree.current = cf;
+      });
+    });
+  }, []);
 
   // Dynamic Shipping & Total Calculation
   const subtotal = useMemo(() => BOOK_CONFIG.BOOK_PRICE * quantity, [quantity]);
   const shippingCharge = useMemo(
-    () => (subtotal >= BOOK_CONFIG.FREE_SHIPPING_THRESHOLD ? 0 : BOOK_CONFIG.STANDARD_SHIPPING_CHARGE),
-    [subtotal]
+    () => {
+      if (subtotal >= BOOK_CONFIG.FREE_SHIPPING_THRESHOLD) return 0;
+      if (!form.state) return BOOK_CONFIG.NATIONAL_SHIPPING_CHARGE; // default until they type
+      const stateStr = form.state.trim().toLowerCase();
+      const isWestBengal = stateStr === 'wb' || stateStr.includes('west bengal') || stateStr === 'w.b' || stateStr === 'w.b.';
+      return isWestBengal ? BOOK_CONFIG.LOCAL_SHIPPING_CHARGE : BOOK_CONFIG.NATIONAL_SHIPPING_CHARGE;
+    },
+    [subtotal, form.state]
   );
   const totalAmount = useMemo(() => subtotal + shippingCharge, [subtotal, shippingCharge]);
 
@@ -74,12 +92,6 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onOrderSuccess }) =>
       newErrors.pincode = 'Pincode must be exactly 6 digits';
     }
 
-    if (!form.utrNumber?.trim()) {
-      newErrors.utrNumber = 'UTR / Transaction ID is required after payment';
-    } else if (form.utrNumber.trim().length < 12) {
-      newErrors.utrNumber = 'Please enter a valid 12-digit UTR number';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -92,15 +104,63 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onOrderSuccess }) =>
 
     setLoading(true);
     try {
+      // 1. Create order in our DB
       const createdOrder = await api.createOrder({
         ...form,
         quantity,
       });
-      onOrderSuccess(createdOrder);
+
+      // 2. Create Payment Session
+      const sessionData = await api.createPaymentSession(createdOrder.orderId as string);
+
+      if (sessionData.isTestMode) {
+        // Skip actual payment for test mode fallback
+        const verifyRes = await api.verifyPayment({ orderId: createdOrder.orderId as string, isTestMode: true });
+        if (verifyRes.success) {
+          onOrderSuccess(verifyRes.order);
+        } else {
+          setPaymentError('Test payment verification failed.');
+        }
+        setLoading(false);
+        return;
+      }
+
+      // 3. Open Cashfree Checkout
+      if (cashfree.current) {
+        let checkoutOptions = {
+          paymentSessionId: sessionData.payment_session_id,
+          redirectTarget: "_modal"
+        };
+        cashfree.current.checkout(checkoutOptions).then((result: any) => {
+          if (result.error) {
+            console.error(result.error);
+            setPaymentError(result.error.message || 'Payment cancelled or failed');
+            setLoading(false);
+          }
+          if (result.redirect) {
+            console.log("Redirection");
+          }
+          if (result.paymentDetails) {
+            // 4. Verify Payment on Backend
+            api.verifyPayment({ orderId: createdOrder.orderId as string })
+              .then(verifyRes => {
+                if (verifyRes.success) {
+                  onOrderSuccess(verifyRes.order);
+                } else {
+                  setPaymentError('Payment verification failed.');
+                }
+              })
+              .catch(err => setPaymentError(err.message))
+              .finally(() => setLoading(false));
+          }
+        });
+      } else {
+        setPaymentError('Payment Gateway not initialized properly.');
+        setLoading(false);
+      }
     } catch (err: any) {
       console.error(err);
       setPaymentError(err.message || 'Could not process order. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
@@ -120,13 +180,13 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onOrderSuccess }) =>
           <div className="crimson-divider max-w-xs mx-auto mt-4" />
         </div>
 
-        {/* Manual Payment Notice Banner */}
+        {/* Payment Notice Banner */}
         <div className="max-w-4xl mx-auto mb-8 bg-[#0E0E0E] border border-crimson-800/80 p-4 rounded-sm text-xs text-neutral-300 flex items-center justify-between gap-4 shadow-lg">
           <div className="flex items-center gap-3">
             <Sparkles className="w-5 h-5 text-crimson-400 flex-shrink-0" />
             <div>
-              <p className="font-semibold text-white uppercase tracking-wider">MANUAL UPI PAYMENT</p>
-              <p className="text-neutral-400">Scan the QR code to pay, then enter your UTR number to submit your order securely.</p>
+              <p className="font-semibold text-white uppercase tracking-wider">SECURE CHECKOUT</p>
+              <p className="text-neutral-400">Complete your payment securely via UPI, Cards, or Net Banking.</p>
             </div>
           </div>
         </div>
@@ -287,48 +347,8 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onOrderSuccess }) =>
 
               </div>
 
-              {/* UPI QR and UTR Input */}
-              <div className="pt-6 border-t border-neutral-900 mt-8">
-                <h3 className="font-serif text-xl text-white font-normal mb-4 text-center">
-                  2. Scan & Pay
-                </h3>
-                
-                <div className="flex flex-col items-center bg-[#121212] border border-neutral-800 p-6 rounded-sm shadow-md mb-6">
-                  <p className="text-xs text-neutral-400 mb-4 text-center uppercase tracking-widest">
-                    Pay exactly <strong className="text-crimson-400">₹{totalAmount}</strong> to place your order
-                  </p>
-                  <img 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=8388949698@ybl&pn=Ladup%20Sherpa&am=${totalAmount}&cu=INR`} 
-                    alt="UPI QR Code" 
-                    className="w-48 h-48 border-4 border-white rounded-md mb-4"
-                  />
-                  <p className="text-sm text-white font-mono bg-black px-4 py-2 rounded-sm border border-neutral-800">
-                    UPI ID: 8388949698@ybl
-                  </p>
-                </div>
-
-                <div className="mb-6">
-                  <label className="block text-xs font-sans tracking-widest text-neutral-300 uppercase mb-2">
-                    12-Digit UTR / Transaction ID *
-                  </label>
-                  <input
-                    type="text"
-                    name="utrNumber"
-                    value={form.utrNumber || ''}
-                    onChange={handleChange}
-                    placeholder="e.g. 312345678901"
-                    maxLength={12}
-                    className={`w-full bg-[#121212] border ${
-                      errors.utrNumber ? 'border-crimson-500' : 'border-neutral-800 focus:border-crimson-600'
-                    } px-4 py-3 text-sm text-white focus:outline-none transition-colors rounded-sm`}
-                  />
-                  {errors.utrNumber && <p className="text-xs text-crimson-400 mt-1">{errors.utrNumber}</p>}
-                </div>
-              </div>
-
               {/* Submit Buttons */}
-              <div className="pt-2 space-y-3">
-                
+              <div className="pt-8 space-y-3">
                 <button
                   type="submit"
                   disabled={loading}
@@ -337,19 +357,19 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onOrderSuccess }) =>
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin text-white" />
-                      <span>VERIFYING...</span>
+                      <span>PROCESSING PAYMENT...</span>
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="w-4 h-4 text-white" />
-                      <span>I HAVE PAID ₹{totalAmount} - SUBMIT ORDER</span>
+                      <CreditCard className="w-4 h-4 text-white" />
+                      <span>PAY ₹{totalAmount} SECURELY</span>
                     </>
                   )}
                 </button>
               </div>
 
-              <div className="flex items-center justify-center gap-6 text-[11px] text-neutral-400 pt-2 border-t border-neutral-900">
-                <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-crimson-500" /> Instant Order Confirmation</span>
+              <div className="flex items-center justify-center gap-6 text-[11px] text-neutral-400 pt-2 border-t border-neutral-900 mt-4 pt-4">
+                <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-crimson-500" /> Secure Payment</span>
                 <span className="flex items-center gap-1.5"><Truck className="w-3.5 h-3.5 text-crimson-500" /> Dispatch in 2-3 days</span>
               </div>
             </form>

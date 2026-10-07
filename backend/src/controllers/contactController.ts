@@ -11,6 +11,11 @@ export const submitContactMessage = async (req: Request, res: Response): Promise
       return;
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({ message: 'Invalid email address' });
+      return;
+    }
+
     const contactData = {
       name,
       email,

@@ -15,23 +15,43 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
   onClose,
 }) => {
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      window.addEventListener('keydown', handleKeyDown);
-    }
+
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      onClose();
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    
+    // Push state so back button closes modal instead of leaving page
+    window.history.pushState({ lightbox: true }, '');
+    window.addEventListener('popstate', handlePopState);
+
     return () => {
       document.body.style.overflow = 'auto';
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('popstate', handlePopState);
+      
+      // If modal was closed by other means (e.g. clicking X), pop the state
+      if (window.history.state && window.history.state.lightbox) {
+        window.history.back();
+      }
     };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 sm:p-8 animate-fadeIn">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 sm:p-8 animate-fadeIn"
+      onClick={onClose}
+    >
       {/* Close Button */}
       <button
         onClick={onClose}
@@ -42,7 +62,10 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
       </button>
 
       {/* Main Image Container */}
-      <div className="relative max-w-5xl max-h-[90vh] w-full flex flex-col items-center justify-center">
+      <div 
+        className="relative max-w-5xl max-h-[90vh] w-full flex flex-col items-center justify-center"
+        onClick={(e) => e.stopPropagation()}
+      >
         <img
           src={imageSrc}
           alt={title}

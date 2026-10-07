@@ -385,12 +385,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ onClose 
                 <span className="text-crimson-400 font-bold text-sm">₹{selectedOrder.totalAmount}</span>
               </div>
               <div>
-                <span className="text-neutral-400 uppercase tracking-widest block">Razorpay Order ID</span>
-                <span className="font-mono text-neutral-300">{selectedOrder.razorpayOrderId || 'N/A'}</span>
+                <span className="text-neutral-400 uppercase tracking-widest block">Payment Session ID</span>
+                <span className="font-mono text-neutral-300">{selectedOrder.paymentSessionId || 'N/A'}</span>
               </div>
               <div>
                 <span className="text-neutral-400 uppercase tracking-widest block">Payment UTR / Ref</span>
-                <span className="font-mono text-neutral-300">{selectedOrder.utrNumber || selectedOrder.razorpayPaymentId || 'N/A'}</span>
+                <span className="font-mono text-neutral-300">{selectedOrder.utrNumber || selectedOrder.paymentId || 'N/A'}</span>
               </div>
             </div>
 

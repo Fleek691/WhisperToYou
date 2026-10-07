@@ -29,8 +29,8 @@ export interface OrderData extends CustomerDetails {
   totalAmount: number;
   paymentStatus: 'pending' | 'pending_verification' | 'successful' | 'failed' | 'cancelled';
   orderStatus: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
-  razorpayOrderId?: string;
-  razorpayPaymentId?: string;
+  paymentSessionId?: string;
+  paymentId?: string;
   shippingCarrier?: string;
   trackingNumber?: string;
   trackingUrl?: string;

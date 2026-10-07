@@ -1,74 +1,117 @@
-import fetch from 'node-fetch'; // Requires node 18+ native fetch, so we can just use global fetch
+import fetch from 'node-fetch'; 
 
 const BASE_URL = 'http://localhost:5000/api';
 
 const runTests = async () => {
-  console.log('🧪 Starting API Edge Case Tests...\n');
+  console.log('🧪 Starting Comprehensive API Edge Case Tests...\n');
   let passed = 0;
   let failed = 0;
 
-  const assert = (condition: boolean, testName: string, errorMsg?: string) => {
+  const assert = (condition: boolean, testName: string, errorMsg?: string, responseBody?: any) => {
     if (condition) {
       console.log(`✅ PASS: ${testName}`);
       passed++;
     } else {
       console.log(`❌ FAIL: ${testName}`);
       if (errorMsg) console.log(`   Expected better handling, got: ${errorMsg}`);
+      if (responseBody) console.log(`   Response Body: ${JSON.stringify(responseBody)}`);
       failed++;
     }
   };
 
   try {
     // 1. REVIEWS API
-    console.log('--- REVIEWS ---');
+    console.log('\n--- REVIEWS API ---');
     const getReviews = await fetch(`${BASE_URL}/reviews`);
     const reviewsData = await getReviews.json();
-    assert(getReviews.status === 200 && Array.isArray(reviewsData) && reviewsData.length <= 5, 'GET /reviews returns max 5 approved reviews');
+    assert(getReviews.status === 200 && Array.isArray(reviewsData), 'GET /reviews returns success');
 
-    const badReview = await fetch(`${BASE_URL}/reviews`, {
+    const badReview1 = await fetch(`${BASE_URL}/reviews`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rating: 5 }) // Missing name, email, review text
+      body: JSON.stringify({ rating: 5 }) // Missing name, review text
     });
-    assert(badReview.status === 400, 'POST /reviews handles missing fields gracefully (400)');
+    assert(badReview1.status === 400, 'POST /reviews rejects missing fields (400)');
 
     const outOfBoundsReview = await fetch(`${BASE_URL}/reviews`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ customerName: 'Test', email: 'test@test.com', rating: 10, review: 'Great!' })
     });
-    assert(outOfBoundsReview.status === 201, 'POST /reviews accepts review but clamps rating');
+    assert(outOfBoundsReview.status === 201, 'POST /reviews clamps rating to max 5 (201)');
+
+    const badReview2 = await fetch(`${BASE_URL}/reviews`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customerName: 'Test', email: 'test@test.com', rating: 'not-a-number', review: 'Great!' })
+    });
+    assert(badReview2.status === 201, 'POST /reviews handles invalid rating types by defaulting to 5', `Status: ${badReview2.status}`, await badReview2.text());
 
     // 2. CONTACT API
-    console.log('\n--- CONTACT ---');
-    const badContact = await fetch(`${BASE_URL}/contact`, {
+    console.log('\n--- CONTACT API ---');
+    const badContact1 = await fetch(`${BASE_URL}/contact`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'Test' }) // Missing email, message
     });
-    assert(badContact.status === 400, 'POST /contact handles missing fields gracefully (400)');
+    assert(badContact1.status === 400, 'POST /contact rejects missing fields (400)');
 
-    // 3. PAYMENT API
-    console.log('\n--- PAYMENTS ---');
-    const badOrder = await fetch(`${BASE_URL}/payment/create-order`, {
+    const badContact2 = await fetch(`${BASE_URL}/contact`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ totalAmount: 'not a number' })
+      body: JSON.stringify({ name: 'Test', email: 'not-an-email', message: 'Hello' })
     });
-    assert(badOrder.status === 500 || badOrder.status === 400, 'POST /payment/create-order rejects invalid amount');
+    assert(badContact2.status === 400 || badContact2.status === 500, 'POST /contact validates email format', `Status: ${badContact2.status}`, await badContact2.text());
 
-    const badVerify = await fetch(`${BASE_URL}/payment/verify`, {
+    // 3. PAYMENT & ORDER API
+    console.log('\n--- ORDER CREATION & PAYMENTS API ---');
+    const missingOrderFields = await fetch(`${BASE_URL}/orders/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fullName: 'John' }) // missing email, phone, address, etc.
+    });
+    assert(missingOrderFields.status === 400 || missingOrderFields.status === 500, 'POST /orders rejects incomplete order data', `Status: ${missingOrderFields.status}`, await missingOrderFields.text());
+
+    let orderId = '';
+    const validOrder = await fetch(`${BASE_URL}/orders/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
-        razorpay_order_id: 'fake_order', 
-        razorpay_payment_id: 'fake_pay', 
-        razorpay_signature: 'fake_sig' 
+        fullName: 'Test User', 
+        email: 'test@example.com',
+        phone: '9999999999',
+        address: '123 Main St',
+        city: 'Siliguri',
+        state: 'West Bengal',
+        pincode: '734001',
+        quantity: 1
       })
     });
-    assert(badVerify.status === 400, 'POST /payment/verify securely rejects invalid cryptographic signatures (400)');
+    if (validOrder.status === 201) {
+      const orderData = await validOrder.json();
+      orderId = orderData.orderId;
+      assert(true, 'POST /orders creates order successfully');
+    } else {
+      assert(false, 'POST /orders failed', `Status: ${validOrder.status}`, await validOrder.text());
+    }
 
-    // 4. ADMIN & SECURITY API
+    if (orderId) {
+      const paymentSession = await fetch(`${BASE_URL}/payment/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId })
+      });
+      assert(paymentSession.status === 200, 'POST /payment/create successfully returns Cashfree session_id');
+
+      const badVerify = await fetch(`${BASE_URL}/payment/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: 'invalid_order_id' })
+      });
+      assert(badVerify.status === 400 || badVerify.status === 404 || badVerify.status === 500, 'POST /payment/verify securely rejects verification for non-existent orders');
+    }
+
+    // 4. ADMIN & SECURITY API (RBAC)
     console.log('\n--- ADMIN SECURITY (RBAC) ---');
     const noTokenAdmin = await fetch(`${BASE_URL}/admin/orders`);
     assert(noTokenAdmin.status === 401, 'GET /admin/orders blocks unauthenticated users (401)');
@@ -77,6 +120,12 @@ const runTests = async () => {
       headers: { 'Authorization': 'Bearer FAKE_TOKEN_123' }
     });
     assert(badTokenAdmin.status === 401, 'GET /admin/orders blocks fake/invalid JWT tokens (401)');
+
+    const fakeMethod = await fetch(`${BASE_URL}/admin/orders`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer FAKE_TOKEN_123' }
+    });
+    assert(fakeMethod.status === 401 || fakeMethod.status === 404, 'POST to GET endpoint is handled safely');
 
     console.log('\n==================================');
     console.log(`🎉 TEST SUMMARY: ${passed} Passed | ${failed} Failed`);

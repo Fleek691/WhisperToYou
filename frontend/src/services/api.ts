@@ -24,7 +24,7 @@ export const api = {
   },
 
   // Payment APIs
-  async createRazorpayOrder(orderId: string): Promise<{ razorpayOrderId: string; amount: number; currency: string; keyId: string; isTestMode?: boolean }> {
+  async createPaymentSession(orderId: string): Promise<{ payment_session_id: string; order_id: string; isTestMode?: boolean }> {
     const res = await fetch(`${API_BASE}/payment/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -39,9 +39,6 @@ export const api = {
 
   async verifyPayment(payload: {
     orderId: string;
-    razorpayPaymentId: string;
-    razorpayOrderId: string;
-    razorpaySignature: string;
     isTestMode?: boolean;
   }): Promise<{ success: boolean; order: OrderData }> {
     const res = await fetch(`${API_BASE}/payment/verify`, {

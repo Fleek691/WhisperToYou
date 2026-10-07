@@ -55,7 +55,8 @@ export const BOOK_CONFIG = {
   
   // Pricing & Shipping Configuration
   BOOK_PRICE: 279, // ₹ INR
-  STANDARD_SHIPPING_CHARGE: 60, // ₹ INR
+  LOCAL_SHIPPING_CHARGE: 80, // ₹ INR (West Bengal)
+  NATIONAL_SHIPPING_CHARGE: 100, // ₹ INR (Other States)
   FREE_SHIPPING_THRESHOLD: 999, // ₹ INR (Free shipping if subtotal >= 999)
   
   // Epigraph & Literary Content
@@ -125,7 +126,7 @@ export const BOOK_CONFIG = {
     locations: "All Across India",
     processingTime: "1 - 2 Business Days",
     estimatedDelivery: "3 - 7 Business Days",
-    shippingCharge: "₹60 (Free on orders above ₹999)",
+    shippingCharge: "₹80 within West Bengal, ₹100 for other states (Free on orders above ₹999)",
     freeShipping: "Orders above ₹999",
     tracking: "Tracking link provided via Email upon dispatch",
     returns: "Replacement guaranteed for damaged or defective copies upon delivery"
