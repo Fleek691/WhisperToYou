@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Cashfree } from 'cashfree-pg';
-import { initializeCashfree } from '../config/cashfree.js';
+import { initializeCashfree, cashfreeInstance } from '../config/cashfree.js';
 import { OrderModel } from '../models/Order.js';
 import { inMemoryDB } from '../config/db.js';
 import { sendOrderConfirmationEmail } from '../services/emailService.js';
@@ -55,7 +55,8 @@ export const createPaymentOrder = async (req: Request, res: Response): Promise<v
       }
     };
 
-    const response = await Cashfree.PGCreateOrder("2023-08-01", request);
+    if (!cashfreeInstance) throw new Error('Cashfree not initialized');
+    const response = await cashfreeInstance.PGCreateOrder(request as any);
 
     res.json({
       payment_session_id: response.data.payment_session_id,
@@ -101,7 +102,8 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
       isValid = true;
     } else {
       try {
-        const response = await Cashfree.PGOrderFetchPayments("2023-08-01", orderId);
+        if (!cashfreeInstance) throw new Error('Cashfree not initialized');
+        const response = await cashfreeInstance.PGOrderFetchPayments(orderId);
         const payments = response.data;
         // Find if any payment was successful
         const successfulPayment = payments.find((p: any) => p.payment_status === 'SUCCESS');
@@ -204,7 +206,8 @@ export const cashfreeWebhook = async (req: Request, res: Response): Promise<void
 
     // Secure Verification: Always ask Cashfree directly for the status
     // This prevents malicious actors from spoofing a success webhook
-    const response = await Cashfree.PGOrderFetchPayments("2023-08-01", orderId);
+    if (!cashfreeInstance) throw new Error('Cashfree not initialized');
+    const response = await cashfreeInstance.PGOrderFetchPayments(orderId);
     const payments = response.data;
     const successfulPayment = payments.find((p: any) => p.payment_status === 'SUCCESS');
 

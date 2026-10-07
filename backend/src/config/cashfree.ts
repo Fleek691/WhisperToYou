@@ -1,4 +1,6 @@
-import { Cashfree } from "cashfree-pg";
+import { Cashfree, CFEnvironment } from "cashfree-pg";
+
+export let cashfreeInstance: Cashfree | null = null;
 
 export const initializeCashfree = () => {
   const appId = process.env.CASHFREE_APP_ID;
@@ -8,11 +10,10 @@ export const initializeCashfree = () => {
     return false;
   }
 
-  Cashfree.XClientId = appId;
-  Cashfree.XClientSecret = secretKey;
-  Cashfree.XEnvironment = process.env.CASHFREE_ENVIRONMENT === 'PRODUCTION' 
-    ? Cashfree.Environment.PRODUCTION 
-    : Cashfree.Environment.SANDBOX;
+  const env = process.env.CASHFREE_ENVIRONMENT === 'PRODUCTION' 
+    ? CFEnvironment.PRODUCTION 
+    : CFEnvironment.SANDBOX;
 
+  cashfreeInstance = new Cashfree(env, appId, secretKey);
   return true;
 };
