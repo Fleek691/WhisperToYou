@@ -6,9 +6,10 @@ interface NavbarProps {
   onNavigate: (sectionId: string) => void;
   onOpenAuth: () => void;
   activeSection?: string;
+  hasOrder?: boolean;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAuth }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAuth, hasOrder }) => {
   const { user, logout } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -69,6 +70,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAuth }) => {
               <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-crimson-600 transition-all duration-300 group-hover:w-full" />
             </button>
           ))}
+          {hasOrder && (
+            <button
+              onClick={() => handleLinkClick('thankyou')}
+              className="text-crimson-400 hover:text-crimson-300 font-semibold transition-colors relative py-1 focus:outline-none text-xs uppercase group"
+            >
+              My Order
+              <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-crimson-600 transition-all duration-300 group-hover:w-full" />
+            </button>
+          )}
         </nav>
 
         {/* Desktop CTA Button */}
@@ -112,9 +122,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAuth }) => {
         {/* Mobile Hamburger Button */}
         <div className="flex md:hidden items-center gap-3">
           {user ? (
-            <button onClick={logout} className="text-neutral-400 hover:text-crimson-400">
-              <User className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={logout} className="flex items-center gap-1.5 focus:outline-none">
+                {user.avatar ? (
+                  <img src={user.avatar} alt={user.name} className="w-7 h-7 rounded-full border border-crimson-800 object-cover" />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-crimson-800 text-white flex items-center justify-center text-[10px] font-bold border border-crimson-600">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <span className="text-[9px] uppercase tracking-wider text-neutral-400 hover:text-crimson-400 font-semibold">Exit</span>
+              </button>
+            </div>
           ) : (
             <button onClick={onOpenAuth} className="text-neutral-400 hover:text-white">
               <User className="w-5 h-5" />
@@ -150,6 +169,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenAuth }) => {
                 <span className="text-crimson-700 text-xs">→</span>
               </button>
             ))}
+            {hasOrder && (
+              <button
+                onClick={() => handleLinkClick('thankyou')}
+                className="py-2 border-b border-neutral-900/60 text-crimson-400 text-left flex items-center justify-between font-bold"
+              >
+                <span>My Order</span>
+                <span className="text-crimson-700 text-xs">→</span>
+              </button>
+            )}
             <div className="pt-4">
               <button
                 onClick={() => handleLinkClick('order')}

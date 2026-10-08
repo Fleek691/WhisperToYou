@@ -10,7 +10,7 @@ export const initializeCashfree = () => {
     return false;
   }
 
-  const env = process.env.CASHFREE_ENVIRONMENT === 'PRODUCTION' 
+  const env = process.env.NODE_ENV === 'production' || process.env.CASHFREE_ENVIRONMENT === 'PRODUCTION'
     ? CFEnvironment.PRODUCTION 
     : CFEnvironment.SANDBOX;
 

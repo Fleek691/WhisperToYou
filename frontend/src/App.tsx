@@ -55,7 +55,7 @@ export const App: React.FC = () => {
       <PetalBackgroundCanvas />
 
       {/* Navbar */}
-      <Navbar onNavigate={handleNavigate} onOpenAuth={() => setShowAuthModal(true)} />
+      <Navbar onNavigate={handleNavigate} onOpenAuth={() => setShowAuthModal(true)} hasOrder={!!completedOrder} />
 
       {/* Main View Router */}
       <main className="relative z-10">

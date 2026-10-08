@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { BOOK_CONFIG } from '../config/bookConfig';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { CustomerDetails, OrderData } from '../types';
 import { ShoppingBag, ShieldCheck, Truck, CreditCard, Minus, Plus, AlertCircle, Loader2, Sparkles, CheckCircle2 } from 'lucide-react';
 
@@ -15,10 +16,11 @@ declare global {
 }
 
 export const OrderSection: React.FC<OrderSectionProps> = ({ onOrderSuccess }) => {
+  const { user } = useAuth();
   const [quantity, setQuantity] = useState<number>(1);
   const [form, setForm] = useState<CustomerDetails>({
-    fullName: '',
-    email: '',
+    fullName: user?.name || '',
+    email: user?.email || '',
     phone: '',
     address: '',
     city: '',
@@ -33,10 +35,20 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onOrderSuccess }) =>
   const cashfree = React.useRef<any>(null);
 
   React.useEffect(() => {
+    if (user) {
+      setForm(prev => ({
+        ...prev,
+        fullName: prev.fullName || user.name || '',
+        email: prev.email || user.email || ''
+      }));
+    }
+  }, [user]);
+
+  React.useEffect(() => {
     // @ts-ignore
     import('@cashfreepayments/cashfree-js').then(({ load }) => {
       load({
-        mode: import.meta.env.VITE_CASHFREE_MODE === 'production' ? 'production' : 'sandbox',
+        mode: import.meta.env.PROD ? 'production' : 'sandbox',
       }).then((cf: any) => {
         cashfree.current = cf;
       });
@@ -313,16 +325,52 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onOrderSuccess }) =>
                   <label className="block text-xs font-sans tracking-widest text-neutral-300 uppercase mb-2">
                     State *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="state"
                     value={form.state}
-                    onChange={handleChange}
-                    placeholder="e.g. Delhi"
+                    onChange={handleChange as any}
                     className={`w-full bg-[#121212] border ${
                       errors.state ? 'border-crimson-500' : 'border-neutral-800 focus:border-crimson-600'
-                    } px-4 py-3 text-sm text-white focus:outline-none transition-colors rounded-sm`}
-                  />
+                    } px-4 py-3 text-sm text-white focus:outline-none transition-colors rounded-sm appearance-none`}
+                  >
+                    <option value="" disabled>Select State</option>
+                    <option value="Andhra Pradesh">Andhra Pradesh</option>
+                    <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                    <option value="Assam">Assam</option>
+                    <option value="Bihar">Bihar</option>
+                    <option value="Chhattisgarh">Chhattisgarh</option>
+                    <option value="Goa">Goa</option>
+                    <option value="Gujarat">Gujarat</option>
+                    <option value="Haryana">Haryana</option>
+                    <option value="Himachal Pradesh">Himachal Pradesh</option>
+                    <option value="Jharkhand">Jharkhand</option>
+                    <option value="Karnataka">Karnataka</option>
+                    <option value="Kerala">Kerala</option>
+                    <option value="Madhya Pradesh">Madhya Pradesh</option>
+                    <option value="Maharashtra">Maharashtra</option>
+                    <option value="Manipur">Manipur</option>
+                    <option value="Meghalaya">Meghalaya</option>
+                    <option value="Mizoram">Mizoram</option>
+                    <option value="Nagaland">Nagaland</option>
+                    <option value="Odisha">Odisha</option>
+                    <option value="Punjab">Punjab</option>
+                    <option value="Rajasthan">Rajasthan</option>
+                    <option value="Sikkim">Sikkim</option>
+                    <option value="Tamil Nadu">Tamil Nadu</option>
+                    <option value="Telangana">Telangana</option>
+                    <option value="Tripura">Tripura</option>
+                    <option value="Uttar Pradesh">Uttar Pradesh</option>
+                    <option value="Uttarakhand">Uttarakhand</option>
+                    <option value="West Bengal">West Bengal</option>
+                    <option value="Andaman and Nicobar Islands">Andaman and Nicobar</option>
+                    <option value="Chandigarh">Chandigarh</option>
+                    <option value="Dadra and Nagar Haveli and Daman and Diu">Daman and Diu</option>
+                    <option value="Delhi">Delhi</option>
+                    <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+                    <option value="Ladakh">Ladakh</option>
+                    <option value="Lakshadweep">Lakshadweep</option>
+                    <option value="Puducherry">Puducherry</option>
+                  </select>
                   {errors.state && <p className="text-xs text-crimson-400 mt-1">{errors.state}</p>}
                 </div>
 
