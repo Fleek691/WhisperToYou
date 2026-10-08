@@ -61,7 +61,8 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
     });
   } catch (error: any) {
     console.error('Google login error:', error);
-    res.status(500).json({ message: 'Authentication failed', error: error.message });
+    // Return 401 Unauthorized for token errors instead of 500
+    res.status(401).json({ message: 'Authentication failed: Invalid token', error: error.message });
   }
 };
 
