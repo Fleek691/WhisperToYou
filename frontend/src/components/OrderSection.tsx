@@ -150,7 +150,7 @@ export const OrderSection: React.FC<OrderSectionProps> = ({ onOrderSuccess }) =>
             setLoading(false);
           }
           if (result.redirect) {
-            console.log("Redirection");
+            // Handled by Cashfree SDK natively
           }
           if (result.paymentDetails) {
             // 4. Verify Payment on Backend
