@@ -3,8 +3,9 @@ import { OrderModel, IOrder } from '../models/Order.js';
 import { inMemoryDB } from '../config/db.js';
 
 // Central configuration values on server
-const BOOK_PRICE = 10; // ₹ INR
-const STANDARD_SHIPPING_CHARGE = 0; // ₹ INR
+const BOOK_PRICE = 279; // ₹ INR
+const LOCAL_SHIPPING_CHARGE = 80; // ₹ INR (West Bengal)
+const NATIONAL_SHIPPING_CHARGE = 100; // ₹ INR (Other States)
 const FREE_SHIPPING_THRESHOLD = 999; // ₹ INR
 
 export const createOrder = async (req: Request, res: Response): Promise<void> => {
@@ -21,7 +22,14 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
 
     // SERVER-SIDE PRICE & SHIPPING CALCULATION (CRITICAL SECURITY)
     const subtotal = BOOK_PRICE * qty;
-    const shippingCharge = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_CHARGE;
+    
+    let shippingCharge = 0;
+    if (subtotal < FREE_SHIPPING_THRESHOLD) {
+      const stateStr = state.trim().toLowerCase();
+      const isWestBengal = stateStr === 'wb' || stateStr.includes('west bengal') || stateStr === 'w.b' || stateStr === 'w.b.';
+      shippingCharge = isWestBengal ? LOCAL_SHIPPING_CHARGE : NATIONAL_SHIPPING_CHARGE;
+    }
+    
     const totalAmount = subtotal + shippingCharge;
 
     const orderId = `WTY-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
