@@ -70,6 +70,7 @@ export const sendOrderConfirmationEmail = async (payload: EmailPayload) => {
     await resend.emails.send({
       from: fromEmail,
       to: [payload.to],
+      bcc: process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.split(',').map(e => e.trim()) : [],
       subject: `Order Confirmed — Whisper to You (${payload.orderId})`,
       html: htmlContent,
     });
