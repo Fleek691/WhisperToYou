@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { api } from '../services/api';
+import { api, API_BASE } from '../services/api';
 
 export interface User {
   id: string;
@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
       try {
-        const response = await fetch(`/api/auth/me`, {
+        const response = await fetch(`${API_BASE}/auth/me`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (credential: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/auth/google`, {
+      const response = await fetch(`${API_BASE}/auth/google`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
