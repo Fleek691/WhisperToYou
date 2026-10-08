@@ -67,10 +67,12 @@ export const sendOrderConfirmationEmail = async (payload: EmailPayload) => {
 
   try {
     const resend = new Resend(apiKey);
+    const adminEmails = process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.split(',').map(e => e.trim()).filter(Boolean) : [];
+    
     await resend.emails.send({
       from: fromEmail,
       to: [payload.to],
-      bcc: process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.split(',').map(e => e.trim()) : [],
+      ...(adminEmails.length > 0 && { bcc: adminEmails }),
       subject: `Order Confirmed — Whisper to You (${payload.orderId})`,
       html: htmlContent,
     });
