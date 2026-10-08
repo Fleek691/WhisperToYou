@@ -3,9 +3,9 @@ import { OrderModel, IOrder } from '../models/Order.js';
 import { inMemoryDB } from '../config/db.js';
 
 // Central configuration values on server
-const BOOK_PRICE = 279; // ₹ INR
-const LOCAL_SHIPPING_CHARGE = 80; // ₹ INR (West Bengal)
-const NATIONAL_SHIPPING_CHARGE = 100; // ₹ INR (Other States)
+const BOOK_PRICE = 5; // ₹ INR
+const LOCAL_SHIPPING_CHARGE = 0; // ₹ INR (West Bengal)
+const NATIONAL_SHIPPING_CHARGE = 0; // ₹ INR (Other States)
 const FREE_SHIPPING_THRESHOLD = 999; // ₹ INR
 
 export const createOrder = async (req: Request, res: Response): Promise<void> => {
