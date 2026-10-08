@@ -54,7 +54,7 @@ export const BOOK_CONFIG = {
   ],
   
   // Pricing & Shipping Configuration
-  BOOK_PRICE: 279, // ₹ INR
+  BOOK_PRICE: 10, // ₹ INR
   LOCAL_SHIPPING_CHARGE: 80, // ₹ INR (West Bengal)
   NATIONAL_SHIPPING_CHARGE: 100, // ₹ INR (Other States)
   FREE_SHIPPING_THRESHOLD: 999, // ₹ INR (Free shipping if subtotal >= 999)
@@ -118,7 +118,7 @@ export const BOOK_CONFIG = {
     publisher: "Ladup Sherpa",
     publicationDate: "2024",
     weight: "250g",
-    price: 279
+    price: 10
   } as BookDetails,
 
   // Shipping & Policy

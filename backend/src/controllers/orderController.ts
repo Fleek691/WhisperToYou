@@ -3,7 +3,7 @@ import { OrderModel, IOrder } from '../models/Order.js';
 import { inMemoryDB } from '../config/db.js';
 
 // Central configuration values on server
-const BOOK_PRICE = 279; // ₹ INR
+const BOOK_PRICE = 10; // ₹ INR
 const STANDARD_SHIPPING_CHARGE = 60; // ₹ INR
 const FREE_SHIPPING_THRESHOLD = 999; // ₹ INR
 
