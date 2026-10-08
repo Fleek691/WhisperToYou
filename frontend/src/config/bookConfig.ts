@@ -55,8 +55,8 @@ export const BOOK_CONFIG = {
   
   // Pricing & Shipping Configuration
   BOOK_PRICE: 10, // ₹ INR
-  LOCAL_SHIPPING_CHARGE: 80, // ₹ INR (West Bengal)
-  NATIONAL_SHIPPING_CHARGE: 100, // ₹ INR (Other States)
+  LOCAL_SHIPPING_CHARGE: 0, // ₹ INR (West Bengal)
+  NATIONAL_SHIPPING_CHARGE: 0, // ₹ INR (Other States)
   FREE_SHIPPING_THRESHOLD: 999, // ₹ INR (Free shipping if subtotal >= 999)
   
   // Epigraph & Literary Content

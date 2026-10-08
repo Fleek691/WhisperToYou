@@ -4,7 +4,7 @@ import { inMemoryDB } from '../config/db.js';
 
 // Central configuration values on server
 const BOOK_PRICE = 10; // ₹ INR
-const STANDARD_SHIPPING_CHARGE = 60; // ₹ INR
+const STANDARD_SHIPPING_CHARGE = 0; // ₹ INR
 const FREE_SHIPPING_THRESHOLD = 999; // ₹ INR
 
 export const createOrder = async (req: Request, res: Response): Promise<void> => {
