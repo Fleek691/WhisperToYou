@@ -2,13 +2,26 @@ import React from 'react';
 import { OrderData } from '../types';
 import { CheckCircle2, ArrowLeft, PackageCheck } from 'lucide-react';
 import { BOOK_CONFIG } from '../config/bookConfig';
+import { api } from '../services/api';
 
 interface ThankYouPageProps {
   order: OrderData;
   onBackHome: () => void;
 }
 
-export const ThankYouPage: React.FC<ThankYouPageProps> = ({ order, onBackHome }) => {
+export const ThankYouPage: React.FC<ThankYouPageProps> = ({ order: initialOrder, onBackHome }) => {
+  const [order, setOrder] = React.useState<OrderData>(initialOrder);
+
+  React.useEffect(() => {
+    if (initialOrder.orderId) {
+      api.getOrder(initialOrder.orderId)
+        .then(data => {
+          if (data) setOrder(data);
+        })
+        .catch(console.error);
+    }
+  }, [initialOrder.orderId]);
+
   return (
     <section className="min-h-screen py-28 bg-[#050505] flex items-center justify-center relative">
       <div className="max-w-2xl mx-auto px-6 w-full text-center">
@@ -37,9 +50,9 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ order, onBackHome })
               <span className="font-mono text-base text-crimson-400 font-semibold">{order.orderId}</span>
             </div>
             <div className="text-right">
-              <span className="text-[10px] tracking-widest text-neutral-400 uppercase block">Payment Status</span>
+              <span className="text-[10px] tracking-widest text-neutral-400 uppercase block">Status</span>
               <span className="inline-block px-2.5 py-0.5 bg-crimson-900/60 text-crimson-300 text-xs font-semibold rounded-sm border border-crimson-700">
-                {order.paymentStatus.toUpperCase()}
+                {order.orderStatus?.toUpperCase() || 'PROCESSING'}
               </span>
             </div>
           </div>
@@ -68,6 +81,24 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ order, onBackHome })
               {order.address}, {order.city}, {order.state} - {order.pincode}
             </p>
           </div>
+
+          {/* Tracking Details */}
+          {(order.trackingNumber || order.trackingUrl) && (
+            <div className="pt-4 border-t border-neutral-900 mt-2">
+              <span className="text-[10px] tracking-widest text-neutral-400 uppercase block mb-1">Shipping Details</span>
+              {order.shippingCarrier && (
+                <span className="block text-xs text-neutral-300 mb-1">Carrier: {order.shippingCarrier}</span>
+              )}
+              {order.trackingNumber && (
+                <span className="block text-xs text-neutral-300 mb-2">Tracking #: <span className="font-mono text-crimson-400">{order.trackingNumber}</span></span>
+              )}
+              {order.trackingUrl && (
+                <a href={order.trackingUrl} target="_blank" rel="noreferrer" className="inline-block px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-xs text-white font-medium rounded-sm border border-neutral-700 transition-colors">
+                  Track Package
+                </a>
+              )}
+            </div>
+          )}
 
         </div>
 

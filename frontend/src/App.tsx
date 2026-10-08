@@ -27,7 +27,7 @@ export const App: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
 
   const handleNavigate = (target: string) => {
-    if (['shipping', 'privacy', 'terms', 'refund', 'contact'].includes(target)) {
+    if (['shipping', 'privacy', 'terms', 'refund', 'contact', 'thankyou'].includes(target)) {
       setCurrentView(target);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
