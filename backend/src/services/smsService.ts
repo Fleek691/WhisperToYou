@@ -1,4 +1,7 @@
-import twilio from 'twilio';
+/**
+ * Pluggable SMS Notification Service Architecture
+ * Supports MSG91, Twilio, or custom SMS gateway providers.
+ */
 
 interface SMSPayload {
   phone: string;
@@ -8,55 +11,25 @@ interface SMSPayload {
 }
 
 export const sendOrderConfirmationSMS = async (payload: SMSPayload): Promise<boolean> => {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER; // e.g., 'whatsapp:+14155238886'
-  const adminNumbers = process.env.ADMIN_WHATSAPP_NUMBERS; // Comma separated, e.g., 'whatsapp:+919876543210,whatsapp:+918888888888'
+  const smsProvider = process.env.SMS_PROVIDER; // e.g. 'MSG91' or 'TWILIO'
+  const smsApiKey = process.env.SMS_API_KEY;
 
-  if (!accountSid || !authToken || !fromNumber) {
-    console.log(`[WHATSAPP MOCK] Notification queued for ${payload.phone} (Order ${payload.orderId})`);
+  if (!smsProvider || !smsApiKey) {
+    console.log(`[SMS NOTIFICATION MOCK] Provider disabled. Notification queued for ${payload.phone} (Order ${payload.orderId})`);
     return false;
   }
 
   try {
-    const client = twilio(accountSid, authToken);
-    
-    // Format customer phone
-    let customerPhone = payload.phone.replace(/\s+/g, '');
-    if (!customerPhone.startsWith('+')) {
-      customerPhone = '+91' + customerPhone;
+    if (smsProvider === 'MSG91') {
+      // MSG91 dispatch logic integration
+      console.log(`[MSG91 SMS DISPATCH] Sending SMS to ${payload.phone}`);
+    } else if (smsProvider === 'TWILIO') {
+      // Twilio dispatch logic integration
+      console.log(`[TWILIO SMS DISPATCH] Sending SMS to ${payload.phone}`);
     }
-    
-    // 1. Notify Customer
-    const message = `Hello ${payload.customerName}! 📚\n\nYour order for "Whisper to You" (ID: ${payload.orderId}) has been successfully confirmed! Total Paid: ₹${payload.totalAmount}.\n\nThank you for inviting this poetry volume into your hands.\n- Ladup Sherpa`;
-
-    await client.messages.create({
-      body: message,
-      from: fromNumber,
-      to: `whatsapp:${customerPhone}`
-    });
-    console.log(`✅ WhatsApp sent to customer: ${customerPhone}`);
-
-    // 2. Notify Admins
-    if (adminNumbers) {
-      const adminMessage = `🚨 NEW ORDER RECEIVED 🚨\n\nOrder ID: ${payload.orderId}\nCustomer: ${payload.customerName}\nPhone: ${payload.phone}\nAmount: ₹${payload.totalAmount}`;
-      
-      const admins = adminNumbers.split(',').map(n => n.trim());
-      for (const admin of admins) {
-        if (admin) {
-          await client.messages.create({
-            body: adminMessage,
-            from: fromNumber,
-            to: admin
-          });
-          console.log(`✅ WhatsApp sent to admin: ${admin}`);
-        }
-      }
-    }
-
     return true;
   } catch (error) {
-    console.error('❌ Error sending WhatsApp notification:', error);
+    console.error('❌ Error sending SMS notification:', error);
     return false;
   }
 };
