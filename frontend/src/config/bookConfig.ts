@@ -25,6 +25,8 @@ export interface BookDetails {
   price: number;
 }
 
+const BOOK_PRICE_INR = 279;
+
 export const BOOK_CONFIG = {
   // Core Information
   BOOK_TITLE: "Whisper to You",
@@ -54,7 +56,7 @@ export const BOOK_CONFIG = {
   ],
   
   // Pricing & Shipping Configuration
-  BOOK_PRICE: 279, // ₹ INR
+  BOOK_PRICE: BOOK_PRICE_INR, // ₹ INR
   LOCAL_SHIPPING_CHARGE: 80, // ₹ INR (West Bengal)
   NATIONAL_SHIPPING_CHARGE: 100, // ₹ INR (Other States)
   FREE_SHIPPING_THRESHOLD: 999, // ₹ INR (Free shipping if subtotal >= 999)
@@ -118,7 +120,7 @@ export const BOOK_CONFIG = {
     publisher: "Ladup Sherpa",
     publicationDate: "2024",
     weight: "250g",
-    price: 10
+    price: BOOK_PRICE_INR
   } as BookDetails,
 
   // Shipping & Policy
